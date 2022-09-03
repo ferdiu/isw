@@ -1,4 +1,25 @@
 # ISW / Ice-Sealed Wyvern
+
+## About this fork
+
+This is a fork of the original project by YoyPa slightly extended to support the laptop **MSI Katana GF66 12UG** where the EC addresses changed a bit.
+
+You can follow the changes on the issue [#259](https://github.com/YoyPa/isw/issues/259) of the original project.
+
+#### Major changes
+
+- changed addresses in EC profile;
+- added `-S` to change _Shift Mode_;
+- added a 4th _backlight level_.
+
+#### Note for Fedora users
+
+If you are having troubles properly installing `ec_sys` module checkout [this gist](https://gist.github.com/ferdiu/ee8a659aca6c268f2f12527633429705) I made.
+
+Note: it needs to be run each time a new kernel is installed.
+
+## Info
+
 <img src="https://github.com/YoyPa/isw/blob/master/image/isw.svg" alt="" width="25%" align="right">
 
 - isw started as an equivalent of "control tools by pherein" but under linux.

@@ -145,7 +145,13 @@ def ec_profile(value):
 		list_gfs = []
 		ap = cfgp.get(value, 'address_profile')
 		fma = int(cfgp.get(ap, 'fan_mode_address'),16)
+		sma = int(cfgp.get(ap, 'shift_mode_address'),16)
 		bcta = int(cfgp.get(ap, 'battery_charging_threshold_address'),16)
+		sm_off = int(cfgp.get('SHIFT_MODE', 'shift_mode_off'))
+		sm_eco = int(cfgp.get('SHIFT_MODE', 'shift_mode_eco'))
+		sm_comfort = int(cfgp.get('SHIFT_MODE', 'shift_mode_comfort'))
+		sm_sport = int(cfgp.get('SHIFT_MODE', 'shift_mode_sport'))
+		sm_turbo = int(cfgp.get('SHIFT_MODE', 'shift_mode_turbo'))
 		for i in range(7):
 			if i<6:
 				list_cta.append(int(cfgp.get(ap, 'cpu_temp_address_'+str(i)),16))
@@ -153,13 +159,35 @@ def ec_profile(value):
 			list_cfsa.append(int(cfgp.get(ap, 'cpu_fan_speed_address_'+str(i)),16))
 			list_gfsa.append(int(cfgp.get(ap, 'gpu_fan_speed_address_'+str(i)),16))
 	with open(EC_IO_FILE,'r+b') as file:
+		file.seek(sma)
+		sm = int(file.read(1).hex(),16)
+		if sm == sm_off:
+			ssm = 'Off'
+		elif sm == sm_eco:
+			ssm = 'Eco'
+		elif sm == sm_comfort:
+			ssm = 'Comfort'
+		elif sm == sm_sport:
+			ssm = 'Sport'
+		elif sm == sm_turbo:
+			ssm = 'Turbo'
+		else:
+			ssm = 'Unknown'
+		print(Text.YELLOW+Text.THREE_COLUMN %(
+		      'Value',
+		      'set @ address',
+		      'Shift mode')+Text.CLEAR)
+		print(Text.THREE_COLUMN %(
+		      hex(sm)+'('+str(sm)+')',
+		      hex(sma)+'(byte'+str(sma)+')',
+		      ssm+'\n'))
 		file.seek(fma)
 		fm = int(file.read(1).hex(),16)
-		if fm == int(140):
+		if fm == int(141):
 			sfm = 'Advanced'
-		elif fm == int(76):
+		elif fm == int(77):
 			sfm = 'Basic'
-		elif fm == int(12):
+		elif fm == int(13):
 			sfm = 'Auto'
 		else:
 			sfm = 'Unknown'
@@ -290,10 +318,13 @@ def ec_usb_backlight(value):
 		ap = cfgp.get('USB_BACKLIGHT', 'address_profile')
 		uba = int(cfgp.get(ap, 'usb_backlight_address'),16)
 		ub_off = int(cfgp.get('USB_BACKLIGHT', 'usb_backlight_off'))
+		ub_on = int(cfgp.get('USB_BACKLIGHT', 'usb_backlight_on'))
 		ub_half = int(cfgp.get('USB_BACKLIGHT', 'usb_backlight_half'))
 		ub_full = int(cfgp.get('USB_BACKLIGHT', 'usb_backlight_full'))
 		if value == 'off':
 			single_write(uba, ub_off)
+		elif value == 'on':
+			single_write(uba, ub_on)
 		elif value == 'half':
 			single_write(uba, ub_half)
 		elif value == 'full':
@@ -429,6 +460,41 @@ def single_write(address, value):
 		      hex(value)+'('+str(value)+')',
 		      hex(address)+'(byte'+str(address)+')'))
 
+def ec_shift_mode(value):
+	# Option -S, set shift mode
+	with open(CFG_FILE) as cfgfile:
+		cfgp = configparser.ConfigParser()
+		cfgp.read_file(cfgfile)
+		ap = cfgp.get('SHIFT_MODE', 'address_profile')
+		sma = int(cfgp.get(ap, 'shift_mode_address'),16)
+		sm_off = int(cfgp.get('SHIFT_MODE', 'shift_mode_off'))
+		sm_eco = int(cfgp.get('SHIFT_MODE', 'shift_mode_eco'))
+		sm_comfort = int(cfgp.get('SHIFT_MODE', 'shift_mode_comfort'))
+		sm_sport = int(cfgp.get('SHIFT_MODE', 'shift_mode_sport'))
+		sm_turbo = int(cfgp.get('SHIFT_MODE', 'shift_mode_turbo'))
+		if value == 'off':
+			print('Error: '+Text.ULINED+'off'+Text.CLEAR+' mode is temprarly '
+				 +'disabled because it is still untested')
+			# single_write(sma, sm_off) # TODO: find a safe way to test this
+		elif value == 'eco':
+			single_write(sma, sm_eco)
+		elif value == 'comfort':
+			single_write(sma, sm_comfort)
+		elif value == 'sport':
+			print('Error: '+Text.ULINED+'sport'+Text.CLEAR+' mode is temprarly '
+				 +'disabled because it isn\'t tested yet')
+			# single_write(sma, sm_sport) # TODO: find a safe way to test this
+		elif value == 'turbo':
+			single_write(sma, sm_turbo)
+		else:
+			print('Error: Only '
+				#   +Text.ULINED+'off'+Text.CLEAR+', '
+				  +Text.ULINED+'eco'+Text.CLEAR+', '
+				  +Text.ULINED+'comfort'+Text.CLEAR+', '
+			    #   +Text.ULINED+'sport'+Text.CLEAR+' '
+				  +'and '
+			      +Text.ULINED+'turbo'+Text.CLEAR+' are valid.')
+
 def main():
 	# ArgumentParser deal with option/argument handling
 	# 'type =' is used to launch a function, having an argument is mandatory
@@ -445,6 +511,11 @@ def main():
 │ via https://github.com/YoyPa/isw (open an issue).                       │
 │ Make sure your dump is made before altering EC with isw, you can reset  │
 │ your EC with a reboot or by changing power source.                      │
+├─ FORK INFO ─────────────────────────────────────────────────────────────┤
+│ This is a fork of the original project by YoyPa slightly extended       │
+│ to support the laptop MSI Katana GF66 12UG where the EC addresses       │
+│ changed a bit. You can follow the changes on the issue #259 of the      │
+│ original project at this link https://github.com/YoyPa/isw/issues/259.  │
 ├─ NAME ──────────────────────────────────────────────────────────────────┤
 │ ISW is MSI at 180°                                                      │
 │ It means Ice-Sealed Wyvern in opposition to MSI's 'unleash the dragon'  │
@@ -475,6 +546,11 @@ def main():
 	                           +Text.ULINED+'ADDRESS'+Text.CLEAR+' in hexadecimal (0x00)\n'
 	                           '└ replace 2nd '+Text.ULINED+'S'+Text.CLEAR+' with '
 	                           +Text.ULINED+'VALUE'+Text.CLEAR+'   in decimal     (00)\n ')
+	parser.add_argument('-S', type = ec_shift_mode, nargs = 1,
+	                    help = '┬ set shift mode\n'
+	                           '└ replace '+Text.ULINED+'S'+Text.CLEAR+' with '
+	                           +Text.ULINED+'eco'+Text.CLEAR+', '+Text.ULINED+'comfort'
+							   +Text.CLEAR+' OR ' +Text.ULINED+'turbo'+Text.CLEAR+'\n ')
 	parser.add_argument('-t', type = ec_battery_threshold,
 	                    help = '┬ set the battery charging threshold\n'
 	                           '└ replace '+Text.ULINED+'T'+Text.CLEAR+' with a '
@@ -485,6 +561,7 @@ def main():
 	                    help = '┬ set usb backlight level\n'
 	                           '└ replace '+Text.ULINED+'USB'+Text.CLEAR+' with '
 	                           +Text.ULINED+'off'+Text.CLEAR+', '
+	                           +Text.ULINED+'on'+Text.CLEAR+', '
 	                           +Text.ULINED+'half'+Text.CLEAR+' OR '
 	                           +Text.ULINED+'full'+Text.CLEAR+'\n ')
 	parser.add_argument('-w', type = ec_write,
