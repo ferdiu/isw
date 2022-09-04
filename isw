@@ -35,7 +35,7 @@ class Store:
 	list_s = []
 
 # First level functions
-def ec_boost(value):
+def ec_boost(value = ''):
 	# Option -b, enable or disable CoolerBoost
 	with open(CFG_FILE) as cfgfile:
 		cfgp = configparser.ConfigParser()
@@ -44,7 +44,16 @@ def ec_boost(value):
 		cba = int(cfgp.get(ap, 'cooler_boost_address'),16)
 		cb_off = int(cfgp.get('COOLER_BOOST', 'cooler_boost_off'))
 		cb_on = int(cfgp.get('COOLER_BOOST', 'cooler_boost_on'))
-		if value == 'off':
+		if value == '':
+			d = {
+				cb_off: 'off',
+				cb_on: 'on',
+			}
+			with open(EC_IO_FILE,'r+b') as file:
+				file.seek(cba)
+				v = int(file.read(1).hex(),16)
+				print(d.get(v, 'unknown'))
+		elif value == 'off':
 			single_write(cba, cb_off)
 		elif value == 'on':
 			single_write(cba, cb_on)
@@ -297,20 +306,25 @@ def ec_set(value):
 	if len(Store.list_s) == 2:
 		single_write(int(Store.list_s[0],16), int(Store.list_s[1]))
 
-def ec_battery_threshold(value):
+def ec_battery_threshold(value = ''):
 	# Option -t, set the battery charging threshold
 	with open(CFG_FILE) as cfgfile:
 		cfgp = configparser.ConfigParser()
 		cfgp.read_file(cfgfile)
 		cbta = int(cfgp.get('MSI_ADDRESS_DEFAULT', 'battery_charging_threshold_address'),16)
-		if int(value) in range(20, 101):
+		if value == '':
+			with open(EC_IO_FILE,'r+b') as file:
+				file.seek(cbta)
+				v = int(file.read(1).hex(),16)
+				print(v-128)
+		elif int(value) in range(20, 101):
 			single_write(cbta, int(value)+128)
 		else:
 			print('Error: Only '+Text.ULINED+'NUMBER'+Text.CLEAR+' between '
 			      +Text.ULINED+'20'+Text.CLEAR+' and '
 			      +Text.ULINED+'100'+Text.CLEAR+' are valid.')
 
-def ec_usb_backlight(value):
+def ec_usb_backlight(value = ''):
 	# Option -u, set usb backlight level
 	with open(CFG_FILE) as cfgfile:
 		cfgp = configparser.ConfigParser()
@@ -321,7 +335,18 @@ def ec_usb_backlight(value):
 		ub_on = int(cfgp.get('USB_BACKLIGHT', 'usb_backlight_on'))
 		ub_half = int(cfgp.get('USB_BACKLIGHT', 'usb_backlight_half'))
 		ub_full = int(cfgp.get('USB_BACKLIGHT', 'usb_backlight_full'))
-		if value == 'off':
+		if value == '':
+			d = {
+				ub_off: 'off',
+				ub_on: 'on',
+				ub_half: 'half',
+				ub_full: 'full',
+			}
+			with open(EC_IO_FILE,'r+b') as file:
+				file.seek(uba)
+				v = int(file.read(1).hex(),16)
+				print(d.get(v, 'unknown'))
+		elif value == 'off':
 			single_write(uba, ub_off)
 		elif value == 'on':
 			single_write(uba, ub_on)
@@ -460,7 +485,7 @@ def single_write(address, value):
 		      hex(value)+'('+str(value)+')',
 		      hex(address)+'(byte'+str(address)+')'))
 
-def ec_shift_mode(value):
+def ec_shift_mode(value = ''):
 	# Option -S, set shift mode
 	with open(CFG_FILE) as cfgfile:
 		cfgp = configparser.ConfigParser()
@@ -472,7 +497,19 @@ def ec_shift_mode(value):
 		sm_comfort = int(cfgp.get('SHIFT_MODE', 'shift_mode_comfort'))
 		sm_sport = int(cfgp.get('SHIFT_MODE', 'shift_mode_sport'))
 		sm_turbo = int(cfgp.get('SHIFT_MODE', 'shift_mode_turbo'))
-		if value == 'off':
+		if value == '':
+			d = {
+				sm_off: 'off',
+				sm_eco: 'eco',
+				sm_comfort: 'comfort',
+				sm_sport: 'sport',
+				sm_turbo: 'turbo',
+			}
+			with open(EC_IO_FILE,'r+b') as file:
+				file.seek(sma)
+				v = int(file.read(1).hex(),16)
+				print(d.get(v, 'unknown'))
+		elif value == 'off':
 			print('Error: '+Text.ULINED+'off'+Text.CLEAR+' mode is temprarly '
 				 +'disabled because it is still untested')
 			# single_write(sma, sm_off) # TODO: find a safe way to test this
@@ -521,11 +558,12 @@ def main():
 │ It means Ice-Sealed Wyvern in opposition to MSI's 'unleash the dragon'  │
 └─────────────────────────────────────────────────────────────────────────┘
 ''')
-	parser.add_argument('-b', type = ec_boost,
+	parser.add_argument('-b', type = ec_boost, nargs='?', default=None, const='',
 	                    help = '┬ enable or disable CoolerBoost\n'
-	                           '└ replace '+Text.ULINED+'B'+Text.CLEAR+' with '
+	                           '├ replace '+Text.ULINED+'B'+Text.CLEAR+' with '
 	                           +Text.ULINED+'off'+Text.CLEAR+' OR '
-	                           +Text.ULINED+'on'+Text.CLEAR+'\n ')
+	                           +Text.ULINED+'on'+Text.CLEAR+'\n'+
+							   '└ omit '+Text.ULINED+'B'+Text.CLEAR+' to get current value\n ')
 	parser.add_argument('-c', action = ECCheck, nargs = 0,
 	                    help = '─ show an EC dump\n ')
 	parser.add_argument('-f', '--file', type = file_profile,
@@ -546,24 +584,27 @@ def main():
 	                           +Text.ULINED+'ADDRESS'+Text.CLEAR+' in hexadecimal (0x00)\n'
 	                           '└ replace 2nd '+Text.ULINED+'S'+Text.CLEAR+' with '
 	                           +Text.ULINED+'VALUE'+Text.CLEAR+'   in decimal     (00)\n ')
-	parser.add_argument('-S', type = ec_shift_mode, nargs = 1,
+	parser.add_argument('-S', type = ec_shift_mode, nargs = '?', metavar='SM', default=None, const='',
 	                    help = '┬ set shift mode\n'
-	                           '└ replace '+Text.ULINED+'S'+Text.CLEAR+' with '
+	                           '├ replace '+Text.ULINED+'SM'+Text.CLEAR+' with '
 	                           +Text.ULINED+'eco'+Text.CLEAR+', '+Text.ULINED+'comfort'
-							   +Text.CLEAR+' OR ' +Text.ULINED+'turbo'+Text.CLEAR+'\n ')
-	parser.add_argument('-t', type = ec_battery_threshold,
+							   +Text.CLEAR+' OR ' +Text.ULINED+'turbo'+Text.CLEAR+'\n'+
+							   '└ omit '+Text.ULINED+'SM'+Text.CLEAR+' to get current value\n ')
+	parser.add_argument('-t', type = ec_battery_threshold, nargs = '?', default=None, const='',
 	                    help = '┬ set the battery charging threshold\n'
-	                           '└ replace '+Text.ULINED+'T'+Text.CLEAR+' with a '
+	                           '├ replace '+Text.ULINED+'T'+Text.CLEAR+' with a '
 	                           +Text.ULINED+'NUMBER'+Text.CLEAR+' between '
 	                           +Text.ULINED+'20'+Text.CLEAR+' and '
-	                           +Text.ULINED+'100'+Text.CLEAR+' (٪)\n ')
-	parser.add_argument('-u', '--usb', type = ec_usb_backlight,
+	                           +Text.ULINED+'100'+Text.CLEAR+' (٪)\n'+
+							   '└ omit '+Text.ULINED+'T'+Text.CLEAR+' to get current value\n ')
+	parser.add_argument('-u', '--usb', type = ec_usb_backlight, nargs = '?', default=None, const='',
 	                    help = '┬ set usb backlight level\n'
-	                           '└ replace '+Text.ULINED+'USB'+Text.CLEAR+' with '
+	                           '├ replace '+Text.ULINED+'USB'+Text.CLEAR+' with '
 	                           +Text.ULINED+'off'+Text.CLEAR+', '
 	                           +Text.ULINED+'on'+Text.CLEAR+', '
 	                           +Text.ULINED+'half'+Text.CLEAR+' OR '
-	                           +Text.ULINED+'full'+Text.CLEAR+'\n ')
+	                           +Text.ULINED+'full'+Text.CLEAR+'\n'+
+							   '└ omit '+Text.ULINED+'USB'+Text.CLEAR+' to get current value\n ')
 	parser.add_argument('-w', type = ec_write,
 	                    help = '┬ write into EC\n'
 	                           '└ replace '+Text.ULINED+'W'+Text.CLEAR+' with '

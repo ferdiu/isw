@@ -1,0 +1,1 @@
+%isw ALL=NOPASSWD: /usr/libexec/isw/usbbacklight, /usr/libexec/isw/shiftmode, /usr/libexec/isw/batterythreshold, /usr/libexec/isw/coolerboost

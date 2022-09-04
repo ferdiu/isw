@@ -10,7 +10,10 @@ You can follow the changes on the issue [#259](https://github.com/YoyPa/isw/issu
 
 - changed addresses in EC profile;
 - added `-S` to change _Shift Mode_;
-- added a 4th _backlight level_.
+- added a 4th _backlight level_;
+- added `isw-user` to set/get some value as a normal user.
+
+In order to use set some commands as normal user (non-root) you need to create a system group named `isw` (`groupadd --system isw`), add the user you want to grant permission to execute some isw commands to the group you just created (`usermod -a -G isw USERNAME`) and then properly install the file `etc/sudoers.d/isw-user-sudoers`.
 
 #### Note for Fedora users
 

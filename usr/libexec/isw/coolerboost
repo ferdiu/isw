@@ -1,0 +1,32 @@
+#!/bin/env bash
+
+usage()
+{
+    echo "usage: $0 <off|on>"
+}
+
+if test $UID -ne 0; then
+    echo "error: this command need to be run as root" >&2
+    exit 1
+fi
+
+if test $# -eq 0; then
+    isw -b
+    exit 0
+elif test $# -ne 1; then
+    usage >&2
+    exit 1
+fi
+
+if test "$1" = "off"; then
+    isw -b off
+elif test "$1" = "on"; then
+    isw -b on
+else
+    echo "error: unrecognized value \`$1'" >&2
+    echo "" >&2
+    usage >&2
+    exit 1
+fi
+
+exit 0

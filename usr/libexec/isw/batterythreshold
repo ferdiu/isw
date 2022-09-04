@@ -1,0 +1,32 @@
+#!/bin/env bash
+
+usage()
+{
+    echo "usage: $0 <threshold>"
+    echo ""
+    echo -e "\tthreshold is a number between 20 and 100"
+}
+
+if test $UID -ne 0; then
+    echo "error: this command need to be run as root" >&2
+    exit 1
+fi
+
+if test $# -eq 0; then
+    isw -t
+    exit 0
+elif test $# -ne 1; then
+    usage >&2
+    exit 1
+fi
+
+if test $1 -ge 20 && test $1 -le 100; then
+    isw -t "$1"
+else
+    echo "error: invalid value \`$1'" >&2
+    echo "" >&2
+    usage >&2
+    exit 1
+fi
+
+exit 0
