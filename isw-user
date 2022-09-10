@@ -5,86 +5,100 @@ import sys
 import os
 import time
 import configparser
+import subprocess
 from argparse import ArgumentParser
 from argparse import RawTextHelpFormatter
 import dbus
 
 # Text formating
 class Text:
-	ULINED = '\033[4m'
-	CLEAR = '\033[0m'
+    ULINED = '\033[4m'
+    CLEAR = '\033[0m'
 
 LIBS_PATH = os.path.join('/usr', 'libexec', 'isw')
 
 def dbus_send_need_update():
-	try:
-		bus = dbus.SessionBus()
-		upd_obj = bus.get_object('org.isw', '/org/isw')
-		interface = dbus.Interface(upd_obj, 'org.isw')
-		interface.update_needed()
-	except dbus.exceptions.DBusException as e:
-		pass
+    try:
+        bus = dbus.SessionBus()
+        upd_obj = bus.get_object('org.isw', '/org/isw')
+        interface = dbus.Interface(upd_obj, 'org.isw')
+        interface.update_needed()
+    except dbus.exceptions.DBusException as e:
+        print('Could send message to dbus:', e.get_dbus_message())
 
 def exec_lib(lib, value):
+    global use_dbus
     args = ['sudo', os.path.join(LIBS_PATH, lib)]
+    rv = False
     if value != '':
         args.append(str(value))
-        dbus_send_need_update()
-    # print(' '.join(args))
-    os.execvp('sudo', args)
+        rv = True
+    try:
+        out = subprocess.getoutput(' '.join(args))
+        if not rv:
+            print(out)
+        return rv
+    except Exception as e:
+        print(e)
+        return False
 
 def ec_boost(value = ''):
-    exec_lib('coolerboost', value)
+    return exec_lib('coolerboost', value)
 
 def ec_shift_mode(value = ''):
-    exec_lib('shiftmode', value)
+    return exec_lib('shiftmode', value)
 
 def ec_battery_threshold(value = ''):
-    exec_lib('batterythreshold', value)
+    return exec_lib('batterythreshold', value)
 
 def ec_usb_backlight(value = ''):
-    exec_lib('usbbacklight', value)
+    return exec_lib('usbbacklight', value)
 
 def main():
-	# ArgumentParser deal with option/argument handling
-	# 'type =' is used to launch a function, having an argument is mandatory
-	# Without argument, use 'action =' and a class instead of a function (see -c)
-	parser = ArgumentParser(formatter_class = RawTextHelpFormatter, epilog =
+    # ArgumentParser deal with option/argument handling
+    # 'type =' is used to launch a function, having an argument is mandatory
+    # Without argument, use 'action =' and a class instead of a function (see -c)
+    parser = ArgumentParser(formatter_class = RawTextHelpFormatter, epilog =
 '''
 ┌─ INFO ──────────────────────────────────────────────────────────────────┐
 │ This program is part of isw: execute `isw -h' for more info.            │
 └─────────────────────────────────────────────────────────────────────────┘
 ''')
-	parser.add_argument('-b', type = ec_boost, nargs='?', default=None, const='',
-	                    help = '┬ enable or disable CoolerBoost\n'
-	                           '├ replace '+Text.ULINED+'B'+Text.CLEAR+' with '
-	                           +Text.ULINED+'off'+Text.CLEAR+' OR '
-	                           +Text.ULINED+'on'+Text.CLEAR+'\n'+
-							   '└ omit '+Text.ULINED+'B'+Text.CLEAR+' to get current value\n ')
-	parser.add_argument('-S', type = ec_shift_mode, nargs = '?', metavar='SM', default=None, const='',
-	                    help = '┬ set shift mode\n'
-	                           '├ replace '+Text.ULINED+'SM'+Text.CLEAR+' with '
-	                           +Text.ULINED+'eco'+Text.CLEAR+', '+Text.ULINED+'comfort'
-							   +Text.CLEAR+' OR ' +Text.ULINED+'turbo'+Text.CLEAR+'\n'+
-							   '└ omit '+Text.ULINED+'SM'+Text.CLEAR+' to get current value\n ')
-	parser.add_argument('-t', type = ec_battery_threshold, nargs = '?', default=None, const='',
-	                    help = '┬ set the battery charging threshold\n'
-	                           '├ replace '+Text.ULINED+'T'+Text.CLEAR+' with a '
-	                           +Text.ULINED+'NUMBER'+Text.CLEAR+' between '
-	                           +Text.ULINED+'20'+Text.CLEAR+' and '
-	                           +Text.ULINED+'100'+Text.CLEAR+' (٪)\n'+
-							   '└ omit '+Text.ULINED+'T'+Text.CLEAR+' to get current value\n ')
-	parser.add_argument('-u', '--usb', type = ec_usb_backlight, nargs = '?', default=None, const='',
-	                    help = '┬ set usb backlight level\n'
-	                           '├ replace '+Text.ULINED+'USB'+Text.CLEAR+' with '
-	                           +Text.ULINED+'off'+Text.CLEAR+', '
-	                           +Text.ULINED+'on'+Text.CLEAR+', '
-	                           +Text.ULINED+'half'+Text.CLEAR+' OR '
-	                           +Text.ULINED+'full'+Text.CLEAR+'\n'+
-							   '└ omit '+Text.ULINED+'USB'+Text.CLEAR+' to get current value\n ')
-	if len(sys.argv) == 1:
-		parser.print_help(sys.stderr)
-	parser.parse_args()
+    parser.add_argument('-D', action = 'store_false',
+                        help = '─ do not broadcast to dbus the action\n ')
+    parser.add_argument('-b', type = ec_boost, nargs='?', default=None, const='',
+                        help = '┬ enable or disable CoolerBoost\n'
+                               '├ replace '+Text.ULINED+'B'+Text.CLEAR+' with '
+                               +Text.ULINED+'off'+Text.CLEAR+' OR '
+                               +Text.ULINED+'on'+Text.CLEAR+'\n'+
+                               '└ omit '+Text.ULINED+'B'+Text.CLEAR+' to get current value\n ')
+    parser.add_argument('-S', type = ec_shift_mode, nargs = '?', metavar='SM', default=None, const='',
+                        help = '┬ set shift mode\n'
+                               '├ replace '+Text.ULINED+'SM'+Text.CLEAR+' with '
+                               +Text.ULINED+'eco'+Text.CLEAR+', '+Text.ULINED+'comfort'
+                               +Text.CLEAR+' OR ' +Text.ULINED+'turbo'+Text.CLEAR+'\n'+
+                               '└ omit '+Text.ULINED+'SM'+Text.CLEAR+' to get current value\n ')
+    parser.add_argument('-t', type = ec_battery_threshold, nargs = '?', default=None, const='',
+                        help = '┬ set the battery charging threshold\n'
+                               '├ replace '+Text.ULINED+'T'+Text.CLEAR+' with a '
+                               +Text.ULINED+'NUMBER'+Text.CLEAR+' between '
+                               +Text.ULINED+'20'+Text.CLEAR+' and '
+                               +Text.ULINED+'100'+Text.CLEAR+' (٪)\n'+
+                               '└ omit '+Text.ULINED+'T'+Text.CLEAR+' to get current value\n ')
+    parser.add_argument('-u', '--usb', type = ec_usb_backlight, nargs = '?', default=None, const='',
+                        help = '┬ set usb backlight level\n'
+                               '├ replace '+Text.ULINED+'USB'+Text.CLEAR+' with '
+                               +Text.ULINED+'off'+Text.CLEAR+', '
+                               +Text.ULINED+'on'+Text.CLEAR+', '
+                               +Text.ULINED+'half'+Text.CLEAR+' OR '
+                               +Text.ULINED+'full'+Text.CLEAR+'\n'+
+                               '└ omit '+Text.ULINED+'USB'+Text.CLEAR+' to get current value\n ')
+    if len(sys.argv) == 1:
+        parser.print_help(sys.stderr)
+    ns = parser.parse_args()
+    # if there -D was not passed and at least one of the setter was used then send dbus update message
+    if ns.D and (ns.b or ns.S or ns.t or ns.usb):
+        dbus_send_need_update()
 
 if __name__ == '__main__':
     main()
