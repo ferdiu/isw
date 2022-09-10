@@ -7,6 +7,7 @@ import time
 import configparser
 from argparse import ArgumentParser
 from argparse import RawTextHelpFormatter
+import dbus
 
 # Text formating
 class Text:
@@ -15,10 +16,20 @@ class Text:
 
 LIBS_PATH = os.path.join('/usr', 'libexec', 'isw')
 
+def dbus_send_need_update():
+	try:
+		bus = dbus.SessionBus()
+		upd_obj = bus.get_object('org.isw', '/org/isw')
+		interface = dbus.Interface(upd_obj, 'org.isw')
+		interface.update_needed()
+	except dbus.exceptions.DBusException as e:
+		pass
+
 def exec_lib(lib, value):
     args = ['sudo', os.path.join(LIBS_PATH, lib)]
     if value != '':
         args.append(str(value))
+        dbus_send_need_update()
     # print(' '.join(args))
     os.execvp('sudo', args)
 
